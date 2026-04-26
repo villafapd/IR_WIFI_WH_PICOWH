@@ -1,0 +1,272 @@
+#include <Arduino.h>
+#include <stdlib.h>
+
+
+// Definición PINOUT Entradas
+// Definición PINOUT SALIDAS
+#define GPIO00   0 // 
+
+unsigned long BaseTimer_00 = 5000;
+unsigned long previousMillis=0;
+bool Array_Code[137];
+long IR_Code = 0;
+String Str_IR_Code;
+int new_range=255;
+
+
+bool bitofword(long registro, int numBit)
+{
+  bool BitX = false;
+  if (numBit == 0)
+  {
+    BitX = registro & 0b00000000000000000000000000000001;
+          
+  }
+  else if (numBit == 1)
+  {
+    BitX = registro & 0b0000000000000000000000000000010;
+          
+  }
+  else if (numBit == 2)
+  {
+    BitX = registro & 0b000000000000000000000000000100;
+          
+  }  
+  else if (numBit == 3)
+  {
+    BitX = registro & 0b0000000000000000000000000001000;
+          
+  }  
+  else if (numBit == 4)
+  {
+    BitX = registro & 0b0000000000000000000000000010000;
+          
+  }  
+  else if (numBit == 5)
+  {
+    BitX = registro & 0b0000000000000000000000000100000;
+          
+  }
+  else if (numBit == 6)
+  {
+    BitX = registro & 0b00000000000000000000000001000000;
+          
+  }
+  else if (numBit == 7)
+  {
+    BitX = registro & 0b00000000000000000000000010000000;
+          
+  }
+  else if (numBit == 8)
+  {
+    BitX = registro & 0b00000000000000000000000100000000;
+          
+  }
+  else if (numBit == 9)
+  {
+    BitX = registro & 0b00000000000000000000001000000000;
+          
+  }
+  else if (numBit == 10)
+  {
+    BitX = registro & 0b00000000000000000000010000000000;
+          
+  }
+  else if (numBit == 11)
+  {
+    BitX = registro & 0b00000000000000000000100000000000;
+          
+  }
+  else if (numBit == 12)
+  {
+    BitX = registro & 0b00000000000000000001000000000000;
+          
+  }
+  else if (numBit == 13)
+  {
+    BitX = registro & 0b00000000000000000010000000000000;
+          
+  }
+  else if (numBit == 14)
+  {
+    BitX = registro & 0b00000000000000000100000000000000;
+          
+  }
+  else if (numBit == 15)
+  {
+    BitX = registro & 0b00000000000000001000000000000000;
+          
+  }
+  else if (numBit == 16)
+  {
+    BitX = registro & 0b00000000000000010000000000000000;
+          
+  }
+  else if (numBit == 17)
+  {
+    BitX = registro & 0b00000000000000100000000000000000;
+          
+  }
+  else if (numBit == 18)
+  {
+    BitX = registro & 0b00000000000001000000000000000000;
+          
+  }
+  else if (numBit == 19)
+  {
+    BitX = registro & 0b00000000000010000000000000000000;
+          
+  }
+
+  else if (numBit == 20)
+  {
+    BitX = registro & 0b00000000000100000000000000000000;
+          
+  }
+  else if (numBit == 21)
+  {
+    BitX = registro & 0b00000000001000000000000000000000;
+          
+  }
+  else if (numBit == 22)
+  {
+    BitX = registro & 0b00000000010000000000000000000000;
+          
+  }
+  else if (numBit == 24)
+  {
+    BitX = registro & 0b00000001000000000000000000000000;
+          
+  }
+  else if (numBit == 25)
+  {
+    BitX = registro & 0b00000010000000000000000000000000;
+          
+  }
+  else if (numBit == 26)
+  {
+    BitX = registro & 0b00000100000000000000000000000000;
+          
+  }
+  else if (numBit == 27)
+  {
+    BitX = registro & 0b00001000000000000000000000000000;
+          
+  }
+  else if (numBit == 28)
+  {
+    BitX = registro & 0b00010000000000000000000000000000;
+          
+  }
+  else if (numBit == 29)
+  {
+    BitX = registro & 0b00100000000000000000000000000000;
+          
+  }
+  else if (numBit == 30)
+  {
+    BitX = registro & 0b01000000000000000000000000000000;
+          
+  }
+  else if (numBit == 31)
+  {
+    BitX = registro & 0b10000000000000000000000000000000;
+          
+  }
+    else if (numBit == 32)
+  {
+    BitX = 0;
+          
+  }
+  return BitX;
+}
+
+
+void pinConfig()
+{
+    //GPIO0 del ESP-01 = IR Led
+    pinMode(GPIO00, OUTPUT); 
+    // GPIO2 del ESP-01 = Pulsador encendido luz
+    //pinMode(GPIO03, INPUT); 
+}
+
+
+
+void setup() 
+{
+  //Configuración Pines ESP8266
+  pinConfig();
+    //Inicializacion del GPIO0 del ESP-01 
+  digitalWrite(GPIO00, LOW);
+  Serial.begin(115200);
+  Serial.println("Booting");
+
+}
+
+void loop()
+{
+
+if (millis() - previousMillis >=BaseTimer_00)
+{
+  //IR_Code= "20DF906F";
+  Str_IR_Code = "20DF906F"; 
+  IR_Code = strtol(Str_IR_Code.c_str(), NULL, 16);
+  IR_Code =
+  Serial.println(String(IR_Code));  
+  // Protocolo NEC Frecuencia de trabajo 38Khz
+  analogWriteFreq(38520);
+  analogWriteResolution(16);
+  analogWriteRange(new_range);
+  //----------------------------------------------------------------------------------------------------
+  //Inicio del comando IR 
+  //----------------------------------------------------------------------------------------------------
+  analogWrite(GPIO00,255);
+  delayMicroseconds(3304);
+  //----------------------------------------------------------------------------------------------------
+  //Pausa del comando IR 
+  //----------------------------------------------------------------------------------------------------
+  analogWrite(GPIO00,0);
+  delayMicroseconds(1667);
+  //----------------------------------------------------------------------------------------------------
+  //Envio del comando completo al dispositivo remoto
+  //----------------------------------------------------------------------------------------------------
+  for (int i = 0; i <= 32; i++)
+  {
+    Array_Code[i] = bitofword(IR_Code,i);
+    if (Array_Code[i] == true)
+    {
+    //----------------------------------------------------------------------------------------------------
+    //Envio de 1(uno) que es la primera parte del pulso que forma el 1(uno) del comando IR
+    //----------------------------------------------------------------------------------------------------
+      analogWrite(GPIO00,255);
+      delayMicroseconds(407);
+    //----------------------------------------------------------------------------------------------------
+    //Envio de 0(cero) que es la segunda parte del pulso que forma el 1(uno) del comando IR
+    //----------------------------------------------------------------------------------------------------
+      analogWrite(GPIO00,0);
+      delayMicroseconds(1277);
+      Serial.print(String(Array_Code[i]));
+    }  
+    else
+    {
+    //----------------------------------------------------------------------------------------------------
+    //Envio de 1(uno) que es la primera parte del pulso que forma el 0(cero) del comando IR
+    //----------------------------------------------------------------------------------------------------
+      analogWrite(GPIO00,255);
+      delayMicroseconds(403);      
+    //----------------------------------------------------------------------------------------------------
+    //Envio de 0(cero) que es la segunda parte del pulso que forma el 0(cero) del comando IR
+    //----------------------------------------------------------------------------------------------------
+      analogWrite(GPIO00,0);
+      delayMicroseconds(430);
+      Serial.print(String(Array_Code[i]));
+    }
+
+
+  }  
+  Serial.println("/n");
+  
+  previousMillis = millis();
+}
+
+}
