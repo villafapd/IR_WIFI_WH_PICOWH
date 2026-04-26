@@ -18,11 +18,8 @@ int duty = 50;
 bool Array_Code[160];     // ahora soporta hasta 160 bits
 long registro[5];         // 5 * 32 bits = 160 bits
 //int new_range = 255;
-// EJEMPLO DE CADENA (PUEDE SER DE 32 A 160 BITS)
-String PowerOn =  "00000010000000000010100000000001110000100100000000010101000000101100010000000000000101100000000000000000100000000000000000000000001111000";
-String PowerOff = "00000010000000000010100000000001110000101000000000010101000000101100000000000000000101100000000000000000100000000000000000000000100111000";
-String Cadena = PowerOff;
 int totalBits;
+
 
 String DirIP;
 unsigned long ts;
@@ -43,6 +40,18 @@ const uint16_t serverPort = 15003;
 uint16_t readRegs[20];
 uint16_t writeRegs[20];
 
+//Tabla registros asignables desde modbus TCP
+int Cmd_PowerOn;
+int Cmd_PowerOff; 
+
+
+// Tabla de codigos binarios del control remoto original
+// Equipo de aire acondicionado WhestingHouse
+String PowerOn =  "00000010000000000010100000000001110000100100000000010101000000101100010000000000000101100000000000000000100000000000000000000000001111000";
+String PowerOff = "00000010000000000010100000000001110000101000000000010101000000101100000000000000000101100000000000000000100000000000000000000000100111000";
+String Cadena = PowerOff;
+
+
 WiFiClient client;
 
 // ---------------------------
@@ -60,15 +69,17 @@ IPAddress DelRemoto(192, 168, 68, 100);
 int udpport = 15108;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
-// Funci�n para Monitorear a traves de UDP remoto con OTA
-void UDP_Serial_Println(String EntradaText)
+// Función para Monitorear a través de UDP remoto con OTA
+void UDP_Serial_Println(bool enable, String EntradaText)
 {
+ if (enable)
+ {
   String str = EntradaText;
   //Construct Char* from String    
-    str += "\n";
-    int n = str.length(); 
-    char text[n + 1];     
-    strcpy(text, str.c_str()); 
+  str += "\n";
+  int n = str.length(); 
+  char text[n + 1];     
+  strcpy(text, str.c_str()); 
 
   // String Texto = InputText;
   if (WiFi.status() == WL_CONNECTED)
@@ -77,6 +88,7 @@ void UDP_Serial_Println(String EntradaText)
       Udp.write(text);
       Udp.endPacket();
     }
+  }
 }
 
 // ======================================================
@@ -469,12 +481,15 @@ void loop()
       //Tabla de datos compartidos con Modbus
       //***************************************************
       //Datos recibidos desde el servidor Modbus
-      //Cmd_Modbus_LuzCocina = bool (Read_MB_Reg[0]);
+      //Aire Acondicionado WhestingHouse
+      //UDP_Terminal = bool(readRegs[3]); //Hab. Terminal UDP
+      Cmd_PowerOn = bitRead (readRegs[0],0);
+      Cmd_PowerOff = bitRead(readRegs[0],1);
       
       //Datos enviados al servidor Modbus
-      //Write_MB_Reg[0]= digitalRead(PIN_RELE_COCINA);
-      //Write_MB_Reg[1]= int(Cmd_Modbus_LuzCocina);
-      //Write_MB_Reg[2]= Cmd_Luz_Cocina;  
-      //Write_MB_Reg[3]= int(triggerFanLogic);
+      //writeRegs[0]= digitalRead(PIN_RELE_COCINA);
+      //writeRegs[1]= int(Cmd_Modbus_LuzCocina);
+      //writeRegs[2]= Cmd_Luz_Cocina;  
+      //writeRegs[3]= int(triggerFanLogic);
 
 }
