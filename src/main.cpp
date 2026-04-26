@@ -30,13 +30,13 @@ unsigned long ts;
 RP2040_PWM pwm(GPIO00, freq, duty);  // pin, frecuencia, duty %
 
 // ---------------------------
-// CONFIGURACI�N WIFI
+// CONFIGURACION WIFI
 // ---------------------------
 const char* ssid = "RedWifi6_Mesh";
 const char* password = "10242010";
 
 // ---------------------------
-// CONFIGURACI�N MODBUS TCP
+// CONFIGURACION MODBUS TCP
 // ---------------------------
 const char* serverIP = "192.168.68.100";
 const uint16_t serverPort = 15003;
@@ -46,14 +46,13 @@ uint16_t writeRegs[20];
 WiFiClient client;
 
 // ---------------------------
-// PAR�METROS DE COMUNICACI�N
+// PARAMETROS DE COMUNICACION
 // ---------------------------
 const uint16_t TIMEOUT_MS = 1000;             // Timeout de respuesta
 const uint16_t RECONNECT_INTERVAL_MS = 2000;  // Tiempo entre reintentos
 unsigned long lastReconnectAttempt = 0;
-
-uint16_t transactionID = 8;
-
+uint16_t transactionID = 1;
+uint16_t UnitID = 8;
 WiFiUDP Udp;
 
 //Puerto y direccion IP del monitor remoto (Uso de UDP). En este caso es la raspberry PI4
@@ -131,7 +130,7 @@ bool modbusReadHolding(uint16_t startAddr, uint16_t count, uint16_t* buffer) {
     request[3] = 0;
     request[4] = 0;
     request[5] = 6;
-    request[6] = 1;        // Unit ID
+    request[6] = UnitID;        // Unit ID
     request[7] = 0x03;     // Function code
     request[8] = startAddr >> 8;
     request[9] = startAddr & 0xFF;
@@ -184,7 +183,7 @@ bool modbusWriteHolding(uint16_t startAddr, uint16_t count, uint16_t* values) {
     request[3] = 0;
     request[4] = length >> 8;
     request[5] = length & 0xFF;
-    request[6] = 1;        // Unit ID
+    request[6] = UnitID;        // Unit ID
     request[7] = 0x10;     // Function code
     request[8] = startAddr >> 8;
     request[9] = startAddr & 0xFF;
@@ -433,24 +432,29 @@ void loop()
 
   
     // Valores de prueba para escritura
-    for (int i = 0; i < 10; i++) writeRegs[i] = i + 1000;
+    //for (int i = 0; i < 10; i++) writeRegs[i] = i + 1000;
 
     // ---- Escritura FC16 ----
-    if (modbusWriteHolding(0, 10, writeRegs)) {
+    if (modbusWriteHolding(10, 10, writeRegs)) 
+    {
         Serial.println("Escritura FC16 OK");
-    } else {
+    } else 
+    {
         Serial.println("Error en FC16");
     }
 
     delay(1000);
 
     // ---- Lectura FC03 ----
-    if (modbusReadHolding(0, 10, readRegs)) {
+    if (modbusReadHolding(0, 10, readRegs)) 
+    {
         Serial.println("Lectura FC03 OK:");
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10; i++) 
+        {
             Serial.printf("Reg[%d] = %d\n", i, readRegs[i]);
         }
-    } else {
+    } else 
+    {
         Serial.println("Error en FC03");
     }
 
