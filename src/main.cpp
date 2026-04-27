@@ -26,8 +26,8 @@ int totalBits;
 bool UDP_Terminal = false;
 String DirIP;
 unsigned long ts;
-bool comando_prev = 0;   // Estado anterior del bit comando
-bool salida = 0;         // Bit de salida (pulso de un ciclo)
+bool comando_prev[32] = {0};   // Estado previo de cada comando
+bool salida[32]       = {0};   // Salida one-shot de cada comando
 long comandos_ir;
 
 RP2040_PWM pwm(GPIO00, freq, duty);  // pin, frecuencia, duty %
@@ -114,25 +114,27 @@ IPAddress DelRemoto(192, 168, 68, 100);
 int udpport = 15108;
 
 // ======================================================
-// Pulso One Shoot rising
+// Pulso One Shoot rising para múltiples comandos
 // ======================================================
-bool GenerarPulsoUnCiclo(bool comando)
+bool GenerarPulsoUnCiclo(uint8_t id, bool comando)
 {
     // Detectar flanco ascendente: comando pasa de 0 → 1
-    if (comando == 1 && comando_prev == 0)
+    if (comando == 1 && comando_prev[id] == 0)
     {
-        salida = 1;   // Pulso de un ciclo
+        salida[id] = 1;   // Pulso de un ciclo
     }
     else
     {
-        salida = 0;   // En todos los demás casos, salida en 0
+        salida[id] = 0;   // En todos los demás casos, salida en 0
     }
 
     // Actualizar estado previo
-    comando_prev = comando;
+    comando_prev[id] = comando;
 
-    return salida;
+    return salida[id];
 }
+
+
 
 // ======================================================
 //  CONVERTIR CADENA BINARIA ? REGISTROS (hasta 160 bits)
@@ -592,15 +594,29 @@ void loop()
 
 */
 
-    bool St_Cmd_PowerOn = GenerarPulsoUnCiclo(Cmd_PowerOn);
+ //******************************************************************************************************************** 
+ //Comandos 
+ //******************************************************************************************************************** 
+ 
+ bool St_Cmd_PowerOn = GenerarPulsoUnCiclo(0, Cmd_PowerOn);
     if (St_Cmd_PowerOn)
     {
         Serial.println("Pulso Comando PowerOn");
         // Ejecucion de un solo ciclo
         bitWrite(comandos_ir, 0, 1);
         EjecutarComando(comandos_ir,Tabla_Codigos_IR);
+        bitWrite(comandos_ir, 0, 0);
     }
- 
+
+        bool St_Cmd_PowerOff = GenerarPulsoUnCiclo(1, Cmd_PowerOff);
+    if (St_Cmd_PowerOff)
+    {
+        Serial.println("Pulso Comando PowerOff");
+        // Ejecucion de un solo ciclo
+        bitWrite(comandos_ir, 1, 1);
+        EjecutarComando(comandos_ir,Tabla_Codigos_IR);
+        bitWrite(comandos_ir, 1, 0);
+    }
  
  //******************************************************************************************************************** 
  //Manejo de logica de OTA 
