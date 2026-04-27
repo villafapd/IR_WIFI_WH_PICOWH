@@ -593,11 +593,10 @@ void loop()
 */
 
     bool St_Cmd_PowerOn = GenerarPulsoUnCiclo(Cmd_PowerOn);
-
     if (St_Cmd_PowerOn)
     {
-        Serial.println("Pulso generado!");
-        // Aquí activás lo que necesites por un solo ciclo
+        Serial.println("Pulso Comando PowerOn");
+        // Ejecucion de un solo ciclo
         bitWrite(comandos_ir, 0, 1);
         EjecutarComando(comandos_ir,Tabla_Codigos_IR);
     }
