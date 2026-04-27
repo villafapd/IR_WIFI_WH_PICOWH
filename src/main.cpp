@@ -7,10 +7,14 @@
 #include <WiFi.h>
 
 
-
-
+// ======================================================
 // PINOUT
+// ======================================================
 #define GPIO00   0
+
+// ======================================================
+// Variables estáticas internas 
+// ======================================================
 unsigned long BaseTimer_00 = 5000;
 unsigned long previousMillis = 0;
 int freq = 38650;
@@ -19,57 +23,261 @@ bool Array_Code[160];     // ahora soporta hasta 160 bits
 long registro[5];         // 5 * 32 bits = 160 bits
 //int new_range = 255;
 int totalBits;
-
-
+bool UDP_Terminal = false;
 String DirIP;
 unsigned long ts;
+bool comando_prev = 0;   // Estado anterior del bit comando
+bool salida = 0;         // Bit de salida (pulso de un ciclo)
+long comandos_ir;
 
 RP2040_PWM pwm(GPIO00, freq, duty);  // pin, frecuencia, duty %
 
-// ---------------------------
+// ======================================================
 // CONFIGURACION WIFI
-// ---------------------------
+// ======================================================
 const char* ssid = "RedWifi6_Mesh";
 const char* password = "10242010";
 
-// ---------------------------
+// ======================================================
 // CONFIGURACION MODBUS TCP
-// ---------------------------
+// ======================================================
 const char* serverIP = "192.168.68.100";
 const uint16_t serverPort = 15003;
 uint16_t readRegs[20];
 uint16_t writeRegs[20];
 
 //Tabla registros asignables desde modbus TCP
-int Cmd_PowerOn;
-int Cmd_PowerOff; 
+bool Cmd_PowerOn;
+bool Cmd_PowerOff; 
 
-
+// ======================================================
 // Tabla de codigos binarios del control remoto original
 // Equipo de aire acondicionado WhestingHouse
-String PowerOn =  "00000010000000000010100000000001110000100100000000010101000000101100010000000000000101100000000000000000100000000000000000000000001111000";
-String PowerOff = "00000010000000000010100000000001110000101000000000010101000000101100000000000000000101100000000000000000100000000000000000000000100111000";
-String Cadena = PowerOff;
+// ======================================================
+// Tabla de codigos IR
+String Tabla_Codigos_IR[32] = 
+{
+  //PowerOn  
+  "00000010000000000010100000000001110000100100000000010101000000101100010000000000000101100000000000000000100000000000000000000000001111000",
+  //PowerOff
+  "00000010000000000010100000000001110000101000000000010101000000101100000000000000000101100000000000000000100000000000000000000000100111000", 
+  "Cadena2", 
+  "Cadena3",
+  "Cadena4", 
+  "Cadena5", 
+  "Cadena6", 
+  "Cadena7",
+  "Cadena8", 
+  "Cadena9", 
+  "Cadena10", 
+  "Cadena11",
+  "Cadena12", 
+  "Cadena13", 
+  "Cadena14", 
+  "Cadena15",
+  "Cadena16", 
+  "Cadena17", 
+  "Cadena18", 
+  "Cadena19",
+  "Cadena20", 
+  "Cadena21", 
+  "Cadena22", 
+  "Cadena23",
+  "Cadena24", 
+  "Cadena25", 
+  "Cadena26", 
+  "Cadena27",
+  "Cadena28", 
+  "Cadena29", 
+  "Cadena30", 
+  "Cadena31"
+};
 
 
 WiFiClient client;
 
-// ---------------------------
-// PARAMETROS DE COMUNICACION
-// ---------------------------
+// ======================================================
+// PARAMETROS DE COMUNICACION MODBUS TCP/IP
+// ======================================================
 const uint16_t TIMEOUT_MS = 1000;             // Timeout de respuesta
 const uint16_t RECONNECT_INTERVAL_MS = 2000;  // Tiempo entre reintentos
 unsigned long lastReconnectAttempt = 0;
 uint16_t transactionID = 1;
 uint16_t UnitID = 8;
-WiFiUDP Udp;
 
+// ======================================================
+// PARAMETROS DE COMUNICACION UDP (Terminal)
+// ======================================================
+WiFiUDP Udp;
 //Puerto y direccion IP del monitor remoto (Uso de UDP). En este caso es la raspberry PI4
 IPAddress DelRemoto(192, 168, 68, 100);
 int udpport = 15108;
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////
+// ======================================================
+// Pulso One Shoot rising
+// ======================================================
+bool GenerarPulsoUnCiclo(bool comando)
+{
+    // Detectar flanco ascendente: comando pasa de 0 → 1
+    if (comando == 1 && comando_prev == 0)
+    {
+        salida = 1;   // Pulso de un ciclo
+    }
+    else
+    {
+        salida = 0;   // En todos los demás casos, salida en 0
+    }
+
+    // Actualizar estado previo
+    comando_prev = comando;
+
+    return salida;
+}
+
+// ======================================================
+//  CONVERTIR CADENA BINARIA ? REGISTROS (hasta 160 bits)
+// ======================================================
+int binStringToRegistersAuto(const String &bin, long registro[])
+{
+    int len = bin.length();
+
+    // Limitar a 160 bits
+    if (len > 160)
+        len = 160;
+
+    // Calcular cuantos registros se necesitan
+    int numReg = (len + 31) / 32;
+
+    // Inicializar registros
+    for (int i = 0; i < numReg; i++)
+        registro[i] = 0;
+
+    // Cargar bits en orden correcto (MSB ? LSB)
+    for (int bit = 0; bit < len; bit++)
+    {
+        int regIndex = bit / 32;
+        int offset   = bit % 32;
+
+        if (bin[bit] == '1')
+            registro[regIndex] |= (1L << offset);
+    }
+
+    return len;   // devuelve la cantidad real de bits cargados
+}
+
+// ======================================================
+//  LEER UN BIT DE LOS REGISTROS (hasta 160 bits)
+// ======================================================
+bool bitOfWordVar(long registro[], int numBit, int totalBits)
+{
+    if (numBit < 0 || numBit >= totalBits)
+        return false;
+
+    int regIndex = numBit / 32;
+    int offset   = numBit % 32;
+
+    return (registro[regIndex] >> offset) & 1;
+}
+
+// ======================================================
+// Enviar el codigo IR
+// ======================================================
+void CMD_IR_to_Ctrol(String Cadena)
+{
+        Serial.println("Cadena Entrada:");
+        Serial.println(Cadena);
+
+        totalBits = binStringToRegistersAuto(Cadena, registro);
+
+        Serial.print("Bits cargados: ");
+        Serial.println(totalBits);
+
+        Serial.println("Inicio, Pausa y Cadena Salida:");
+
+        // Inicio del comando IR
+        pwm.setPWM(GPIO00, freq, duty);     // cambiar frecuencia y duty
+        delayMicroseconds(3280); //3294
+        //Serial.print("1");
+
+        // Pausa
+        pwm.setPWM(GPIO00, freq, 0);     // cambiar frecuencia y duty
+        delayMicroseconds(1671);
+        //Serial.print("0");
+
+        // Envio del comando completo
+        for (int i = 0; i < totalBits; i++)
+        {
+            Array_Code[i] = bitOfWordVar(registro, i, totalBits);
+            if (Array_Code[i])
+            {
+                //----------------------------------------------------------------------------------------------------
+                //Envio de 1(uno) que es la primera parte del pulso que forma el 1(uno) del comando IR
+                //----------------------------------------------------------------------------------------------------
+                pwm.setPWM(GPIO00, freq, duty);     // cambiar frecuencia y duty
+                delayMicroseconds(396);
+                //----------------------------------------------------------------------------------------------------
+                //Envio de 0(cero) que es la segunda parte del pulso que forma el 1(uno) del comando IR
+                //----------------------------------------------------------------------------------------------------
+                pwm.setPWM(GPIO00, freq, 0);     // cambiar frecuencia y duty
+                delayMicroseconds(1278);
+
+                //Serial.print("1");
+            }
+            else
+            {
+                //----------------------------------------------------------------------------------------------------
+                //Envio de 1(uno) que es la primera parte del pulso que forma el 0(cero) del comando IR
+                //----------------------------------------------------------------------------------------------------
+                pwm.setPWM(GPIO00, freq, duty);     // cambiar frecuencia y duty
+                delayMicroseconds(396); //396
+                //----------------------------------------------------------------------------------------------------
+                //Envio de 0(cero) que es la segunda parte del pulso que forma el 0(cero) del comando IR
+                //----------------------------------------------------------------------------------------------------
+                pwm.setPWM(GPIO00, freq, 0);     // cambiar frecuencia y duty
+                delayMicroseconds(435);
+
+                //Serial.print("0");
+            }
+        }
+
+        //Serial.println();
+        
+
+}
+
+// ======================================================
+// Comando desde Modbus para ejectuar el comando IR
+// ======================================================
+void EjecutarComando(long Comando, String Array_Cadenas[32])
+{
+    for (int i = 0; i < 32; i++)
+    {
+        // Extraer bit i (0 = LSB)
+        bool bit = (Comando >> i) & 0x01;
+
+        if (bit)
+        {
+            Serial.print("Bit ");
+            Serial.print(i);
+            Serial.println(" = 1 -> Ejecutando CMD_IR_to_Ctrol con:");
+
+            Serial.println(Array_Cadenas[i]);
+
+            // Ejecutar comando IR con la cadena correspondiente
+            CMD_IR_to_Ctrol(Array_Cadenas[i]);
+        }
+        else
+        {
+            Serial.print("Bit ");
+            Serial.print(i);
+            Serial.println(" = 0 -> No ejecuta");
+        }
+    }
+}
+
+// ======================================================
 // Función para Monitorear a través de UDP remoto con OTA
+// ======================================================
 void UDP_Serial_Println(bool enable, String EntradaText)
 {
  if (enable)
@@ -233,63 +441,18 @@ bool modbusWriteHolding(uint16_t startAddr, uint16_t count, uint16_t* values) {
     return true;
 }
 
-// -----------------------------------------------------------------------------
-//  CONVERTIR CADENA BINARIA ? REGISTROS (hasta 160 bits)
-// -----------------------------------------------------------------------------
-int binStringToRegistersAuto(const String &bin, long registro[])
-{
-    int len = bin.length();
-
-    // Limitar a 160 bits
-    if (len > 160)
-        len = 160;
-
-    // Calcular cuantos registros se necesitan
-    int numReg = (len + 31) / 32;
-
-    // Inicializar registros
-    for (int i = 0; i < numReg; i++)
-        registro[i] = 0;
-
-    // Cargar bits en orden correcto (MSB ? LSB)
-    for (int bit = 0; bit < len; bit++)
-    {
-        int regIndex = bit / 32;
-        int offset   = bit % 32;
-
-        if (bin[bit] == '1')
-            registro[regIndex] |= (1L << offset);
-    }
-
-    return len;   // devuelve la cantidad real de bits cargados
-}
-
-// -----------------------------------------------------------------------------
-//  LEER UN BIT DE LOS REGISTROS (hasta 160 bits)
-// -----------------------------------------------------------------------------
-bool bitOfWordVar(long registro[], int numBit, int totalBits)
-{
-    if (numBit < 0 || numBit >= totalBits)
-        return false;
-
-    int regIndex = numBit / 32;
-    int offset   = numBit % 32;
-
-    return (registro[regIndex] >> offset) & 1;
-}
-
-// -----------------------------------------------------------------------------
+// ======================================================
 //  CONFIGURACION DE PINES
-// -----------------------------------------------------------------------------
+// ======================================================
 void pinConfig()
 {
     pinMode(GPIO00, OUTPUT);
     digitalWrite(GPIO00, LOW);
 }
 
-// -----------------------------------------------------------------------------
+// ======================================================
 //  SETUP
-// -----------------------------------------------------------------------------
+// ======================================================
 void setup() 
 {
     pinConfig();
@@ -349,19 +512,19 @@ void setup()
   });
   ArduinoOTA.begin();
   Serial.println("OTA Operando");
-  UDP_Serial_Println("IR_WIFI_AC01: OTA Operando");
+  UDP_Serial_Println(UDP_Terminal, "IR_WIFI_AC01: OTA Operando");
   Serial.print("IP address: ");
-  UDP_Serial_Println("IR_WIFI_AC01: IP address");
+  UDP_Serial_Println(UDP_Terminal, "IR_WIFI_AC01: IP address");
   Serial.println(WiFi.localIP());
   DirIP = WiFi.localIP().toString().c_str();
-  UDP_Serial_Println(DirIP);
+  UDP_Serial_Println(UDP_Terminal, DirIP);
   
-  UDP_Serial_Println("IR_WIFI_AC01: Cliente modbus activo en PICO WH");    
+  UDP_Serial_Println(UDP_Terminal, "IR_WIFI_AC01: Cliente modbus activo en PICO WH");    
 }
 
-// -----------------------------------------------------------------------------
+// ======================================================
 //  LOOP PRINCIPAL
-// -----------------------------------------------------------------------------
+// ======================================================
 void loop()
 {
 /*
@@ -429,22 +592,25 @@ void loop()
 
 */
 
+    bool St_Cmd_PowerOn = GenerarPulsoUnCiclo(Cmd_PowerOn);
 
+    if (St_Cmd_PowerOn)
+    {
+        Serial.println("Pulso generado!");
+        // Aquí activás lo que necesites por un solo ciclo
+        bitWrite(comandos_ir, 0, 1);
+        EjecutarComando(comandos_ir,Tabla_Codigos_IR);
+    }
  
  
  //******************************************************************************************************************** 
  //Manejo de logica de OTA 
  //******************************************************************************************************************** 
- 
   ArduinoOTA.handle();
 
 //******************************************************************************************************************** 
 //Polling Modbus TCP IP Cliente
 //******************************************************************************************************************** 
-
-  
-    // Valores de prueba para escritura
-    //for (int i = 0; i < 10; i++) writeRegs[i] = i + 1000;
 
     // ---- Escritura FC16 ----
     if (modbusWriteHolding(10, 10, writeRegs)) 
@@ -454,9 +620,7 @@ void loop()
     {
         Serial.println("Error en FC16");
     }
-
     delay(1000);
-
     // ---- Lectura FC03 ----
     if (modbusReadHolding(0, 10, readRegs)) 
     {
@@ -469,7 +633,6 @@ void loop()
     {
         Serial.println("Error en FC03");
     }
-
     delay(2000);
 
 
@@ -483,8 +646,8 @@ void loop()
       //Datos recibidos desde el servidor Modbus
       //Aire Acondicionado WhestingHouse
       //UDP_Terminal = bool(readRegs[3]); //Hab. Terminal UDP
-      Cmd_PowerOn = bitRead (readRegs[0],0);
-      Cmd_PowerOff = bitRead(readRegs[0],1);
+      Cmd_PowerOn = bitRead (readRegs[0],0); //0 = LSB, 15 = MSB en un entero de 16 bits
+      Cmd_PowerOff = bitRead(readRegs[0],1); //0 = LSB, 15 = MSB en un entero de 16 bits
       
       //Datos enviados al servidor Modbus
       //writeRegs[0]= digitalRead(PIN_RELE_COCINA);
