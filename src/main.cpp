@@ -253,7 +253,7 @@ void CMD_IR_to_Ctrol(String Cadena, int inicio, int pausa, int unoprimeraparte, 
 // ======================================================
 // Comando desde Modbus para ejectuar el comando IR
 // ======================================================
-void EjecutarComando(long Comando, String Array_Cadenas[32])
+void EjecutarComando(long Comando, String Array_Cadenas[32], int inicio, int pausa, int unoprimeraparte, int unosegundaparte, int ceroprimeraparte, int cerosegundaparte)
 {
     for (int i = 0; i < 32; i++)
     {
@@ -267,7 +267,7 @@ void EjecutarComando(long Comando, String Array_Cadenas[32])
             Serial.println(Array_Cadenas[i]);
 
             // Ejecutar comando IR con la cadena correspondiente
-            CMD_IR_to_Ctrol(Array_Cadenas[i],WH_Inicio,WH_Pausa, WH_UnoPrimeraParte, WH_UnoSegundaParte, WH_CeroPrimeraParte, WH_CeroSegundaParte);
+            CMD_IR_to_Ctrol(Array_Cadenas[i], inicio, pausa, unoprimeraparte, unosegundaparte, ceroprimeraparte, cerosegundaparte);
         }
         else
         {
@@ -653,7 +653,7 @@ void loop()
         UDP_Serial_Println(UDP_Terminal,"Pulso Comando PowerOn" );
         // Ejecucion de un solo ciclo
         bitWrite(comandos_ir, 0, 1);
-        EjecutarComando(comandos_ir,Tabla_Codigos_IR);
+        EjecutarComando(comandos_ir,Tabla_Codigos_IR,WH_Inicio,WH_Pausa, WH_UnoPrimeraParte, WH_UnoSegundaParte, WH_CeroPrimeraParte, WH_CeroSegundaParte);
         bitWrite(comandos_ir, 0, 0);
     }
     //Funcion OSR One Shoot Rising
@@ -664,7 +664,7 @@ void loop()
         UDP_Serial_Println(UDP_Terminal,"Pulso Comando PowerOff" );
         // Ejecucion de un solo ciclo
         bitWrite(comandos_ir, 1, 1);
-        EjecutarComando(comandos_ir,Tabla_Codigos_IR);
+        EjecutarComando(comandos_ir,Tabla_Codigos_IR, WH_Inicio,WH_Pausa, WH_UnoPrimeraParte, WH_UnoSegundaParte, WH_CeroPrimeraParte, WH_CeroSegundaParte);
         bitWrite(comandos_ir, 1, 0);
     }
 
