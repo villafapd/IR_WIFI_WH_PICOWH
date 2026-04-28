@@ -4,7 +4,8 @@ Ingenieria inversa de un control remoto Infrarrojos
 
 Con ayuda de un osciloscopio se puede capturar el tren de pulsos que emite un control remoto de infrarrojos.
 
-<img width="9248" height="4164" alt="20260428_142343_hor" src="https://github.com/user-attachments/assets/ee5c7aae-991c-404c-8d43-397614a47ada" />
+<img width="7459" height="4164" alt="20260428_142343_hor" src="https://github.com/user-attachments/assets/f00f9aec-6553-480c-b3fa-dcb705a2d95e" />
+
 
 Luego de la captura se analiza la frecuencia de modulación, el ancho de pulsos para inicio, pausa, uno y cero.
 
