@@ -134,8 +134,6 @@ bool GenerarPulsoUnCiclo(uint8_t id, bool comando)
     return salida[id];
 }
 
-
-
 // ======================================================
 //  CONVERTIR CADENA BINARIA ? REGISTROS (hasta 160 bits)
 // ======================================================
@@ -259,9 +257,7 @@ void EjecutarComando(long Comando, String Array_Cadenas[32])
 
         if (bit)
         {
-            Serial.print("Bit ");
-            Serial.print(i);
-            Serial.println(" = 1 -> Ejecutando CMD_IR_to_Ctrol con:");
+            Serial.println(String("Bit ") + i + " = 1 -> Ejecutando funcion CMD_IR_to_Ctrol con:");
 
             Serial.println(Array_Cadenas[i]);
 
@@ -270,9 +266,7 @@ void EjecutarComando(long Comando, String Array_Cadenas[32])
         }
         else
         {
-            Serial.print("Bit ");
-            Serial.print(i);
-            Serial.println(" = 0 -> No ejecuta");
+            Serial.println(String("Bit ") + i + " = 0 -> No ejecuta");
         }
     }
 }
@@ -593,39 +587,15 @@ void loop()
     }
 
 */
-
- //******************************************************************************************************************** 
- //Comandos 
- //******************************************************************************************************************** 
  
- bool St_Cmd_PowerOn = GenerarPulsoUnCiclo(0, Cmd_PowerOn);
-    if (St_Cmd_PowerOn)
-    {
-        Serial.println("Pulso Comando PowerOn");
-        // Ejecucion de un solo ciclo
-        bitWrite(comandos_ir, 0, 1);
-        EjecutarComando(comandos_ir,Tabla_Codigos_IR);
-        bitWrite(comandos_ir, 0, 0);
-    }
+    //******************************************************************************************************************** 
+    //Manejo de logica de OTA 
+    //******************************************************************************************************************** 
+    ArduinoOTA.handle();
 
-        bool St_Cmd_PowerOff = GenerarPulsoUnCiclo(1, Cmd_PowerOff);
-    if (St_Cmd_PowerOff)
-    {
-        Serial.println("Pulso Comando PowerOff");
-        // Ejecucion de un solo ciclo
-        bitWrite(comandos_ir, 1, 1);
-        EjecutarComando(comandos_ir,Tabla_Codigos_IR);
-        bitWrite(comandos_ir, 1, 0);
-    }
- 
- //******************************************************************************************************************** 
- //Manejo de logica de OTA 
- //******************************************************************************************************************** 
-  ArduinoOTA.handle();
-
-//******************************************************************************************************************** 
-//Polling Modbus TCP IP Cliente
-//******************************************************************************************************************** 
+    //******************************************************************************************************************** 
+    //Polling Modbus TCP IP Cliente
+    //******************************************************************************************************************** 
 
     // ---- Escritura FC16 ----
     if (modbusWriteHolding(10, 10, writeRegs)) 
@@ -635,7 +605,7 @@ void loop()
     {
         Serial.println("Error en FC16");
     }
-    delay(1000);
+    delay(2000);
     // ---- Lectura FC03 ----
     if (modbusReadHolding(0, 10, readRegs)) 
     {
@@ -651,23 +621,48 @@ void loop()
     delay(2000);
 
 
-   
+    //***************************************************
+    //Tabla de datos compartidos con Modbus TCP Server (DomoServer) o simulador modbus
+    //***************************************************
+    //Datos recibidos desde el servidor Modbus
+    //Aire Acondicionado WhestingHouse
+    //UDP_Terminal = bool(readRegs[3]); //Hab. Terminal UDP
+    Cmd_PowerOn = bitRead (readRegs[0],0); //0 = LSB, 15 = MSB en un entero de 16 bits
+    Cmd_PowerOff = bitRead(readRegs[0],1); //0 = LSB, 15 = MSB en un entero de 16 bits
+
+    UDP_Terminal= bool (readRegs[1]); // Hab. de la terminal para visualizar estados de variables de forma remota
+    //Datos enviados al servidor Modbus
+    //writeRegs[0]= 0;
+    //writeRegs[1]= 0;
+    //writeRegs[2]= 0;  
+    //writeRegs[3]= 0;
+
+    //******************************************************************************************************************** 
+    //Comandos 
+    //******************************************************************************************************************** 
+    //Funcion OSR One Shoot Rising
+    bool St_Cmd_PowerOn = GenerarPulsoUnCiclo(0, Cmd_PowerOn); //El cero en la funcion corresponde al guardado de la variables temporales
+    if (St_Cmd_PowerOn)
+    {
+        Serial.println("Pulso Comando PowerOn");
+        UDP_Serial_Println(UDP_Terminal,"Pulso Comando PowerOn" );
+        // Ejecucion de un solo ciclo
+        bitWrite(comandos_ir, 0, 1);
+        EjecutarComando(comandos_ir,Tabla_Codigos_IR);
+        bitWrite(comandos_ir, 0, 0);
+    }
+    //Funcion OSR One Shoot Rising
+    bool St_Cmd_PowerOff = GenerarPulsoUnCiclo(1, Cmd_PowerOff); //El uno en la funcion corresponde al guardado de la variables temporales
+    if (St_Cmd_PowerOff)
+    {
+        Serial.println("Pulso Comando PowerOff");
+        UDP_Serial_Println(UDP_Terminal,"Pulso Comando PowerOff" );
+        // Ejecucion de un solo ciclo
+        bitWrite(comandos_ir, 1, 1);
+        EjecutarComando(comandos_ir,Tabla_Codigos_IR);
+        bitWrite(comandos_ir, 1, 0);
+    }
 
 
-
-      //***************************************************
-      //Tabla de datos compartidos con Modbus
-      //***************************************************
-      //Datos recibidos desde el servidor Modbus
-      //Aire Acondicionado WhestingHouse
-      //UDP_Terminal = bool(readRegs[3]); //Hab. Terminal UDP
-      Cmd_PowerOn = bitRead (readRegs[0],0); //0 = LSB, 15 = MSB en un entero de 16 bits
-      Cmd_PowerOff = bitRead(readRegs[0],1); //0 = LSB, 15 = MSB en un entero de 16 bits
-      
-      //Datos enviados al servidor Modbus
-      //writeRegs[0]= digitalRead(PIN_RELE_COCINA);
-      //writeRegs[1]= int(Cmd_Modbus_LuzCocina);
-      //writeRegs[2]= Cmd_Luz_Cocina;  
-      //writeRegs[3]= int(triggerFanLogic);
 
 }
