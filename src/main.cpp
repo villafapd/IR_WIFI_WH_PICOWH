@@ -527,72 +527,7 @@ void setup()
 //  LOOP PRINCIPAL
 // ======================================================
 void loop()
-{
-/*
-  if (millis() - previousMillis >= BaseTimer_00)
-    {
-        Serial.println("Cadena Entrada:");
-        Serial.println(Cadena);
-
-        totalBits = binStringToRegistersAuto(Cadena, registro);
-
-        Serial.print("Bits cargados: ");
-        Serial.println(totalBits);
-
-        Serial.println("Inicio, Pausa y Cadena Salida:");
-
-        // Inicio del comando IR
-        pwm.setPWM(GPIO00, freq, duty);     // cambiar frecuencia y duty
-        delayMicroseconds(3280); //3294
-        //Serial.print("1");
-
-        // Pausa
-        pwm.setPWM(GPIO00, freq, 0);     // cambiar frecuencia y duty
-        delayMicroseconds(1671);
-        //Serial.print("0");
-
-        // Envio del comando completo
-        for (int i = 0; i < totalBits; i++)
-        {
-            Array_Code[i] = bitOfWordVar(registro, i, totalBits);
-            if (Array_Code[i])
-            {
-                //----------------------------------------------------------------------------------------------------
-                //Envio de 1(uno) que es la primera parte del pulso que forma el 1(uno) del comando IR
-                //----------------------------------------------------------------------------------------------------
-                pwm.setPWM(GPIO00, freq, duty);     // cambiar frecuencia y duty
-                delayMicroseconds(396);
-                //----------------------------------------------------------------------------------------------------
-                //Envio de 0(cero) que es la segunda parte del pulso que forma el 1(uno) del comando IR
-                //----------------------------------------------------------------------------------------------------
-                pwm.setPWM(GPIO00, freq, 0);     // cambiar frecuencia y duty
-                delayMicroseconds(1278);
-
-                //Serial.print("1");
-            }
-            else
-            {
-                //----------------------------------------------------------------------------------------------------
-                //Envio de 1(uno) que es la primera parte del pulso que forma el 0(cero) del comando IR
-                //----------------------------------------------------------------------------------------------------
-                pwm.setPWM(GPIO00, freq, duty);     // cambiar frecuencia y duty
-                delayMicroseconds(396); //396
-                //----------------------------------------------------------------------------------------------------
-                //Envio de 0(cero) que es la segunda parte del pulso que forma el 0(cero) del comando IR
-                //----------------------------------------------------------------------------------------------------
-                pwm.setPWM(GPIO00, freq, 0);     // cambiar frecuencia y duty
-                delayMicroseconds(435);
-
-                //Serial.print("0");
-            }
-        }
-
-        //Serial.println();
-        previousMillis = millis();
-    }
-
-*/
- 
+{ 
     //******************************************************************************************************************** 
     //Manejo de logica de OTA 
     //******************************************************************************************************************** 
