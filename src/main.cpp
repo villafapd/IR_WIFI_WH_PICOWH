@@ -93,6 +93,15 @@ String Tabla_Codigos_IR[32] =
   "Cadena31"
 };
 
+//Configuración de anchos de pulsos IR
+//Para Control Remoto WhestingHouse
+int WH_Inicio = 3280;
+int WH_Pausa = 1671;
+int WH_UnoPrimeraParte = 396;
+int WH_UnoSegundaParte = 1278;
+int WH_CeroPrimeraParte = 396;
+int WH_CeroSegundaParte = 435;
+
 
 WiFiClient client;
 
@@ -103,7 +112,7 @@ const uint16_t TIMEOUT_MS = 1000;             // Timeout de respuesta
 const uint16_t RECONNECT_INTERVAL_MS = 2000;  // Tiempo entre reintentos
 unsigned long lastReconnectAttempt = 0;
 uint16_t transactionID = 1;
-uint16_t UnitID = 8;
+uint16_t UnitID = 8; //Numero Esclavo
 
 // ======================================================
 // PARAMETROS DE COMUNICACION UDP (Terminal)
@@ -182,26 +191,22 @@ bool bitOfWordVar(long registro[], int numBit, int totalBits)
 // ======================================================
 // Enviar el codigo IR
 // ======================================================
-void CMD_IR_to_Ctrol(String Cadena)
+void CMD_IR_to_Ctrol(String Cadena, int inicio, int pausa, int unoprimeraparte, int unosegundaparte, int ceroprimeraparte, int cerosegundaparte)
 {
-        Serial.println("Cadena Entrada:");
-        Serial.println(Cadena);
-
+        Serial.println("Cadena Entrada:" + Cadena);
         totalBits = binStringToRegistersAuto(Cadena, registro);
-
         Serial.print("Bits cargados: ");
         Serial.println(totalBits);
 
-        Serial.println("Inicio, Pausa y Cadena Salida:");
-
+        Serial.println("Enviando Pulsos IR");
         // Inicio del comando IR
         pwm.setPWM(GPIO00, freq, duty);     // cambiar frecuencia y duty
-        delayMicroseconds(3280); //3294
+        delayMicroseconds(inicio); 
         //Serial.print("1");
 
         // Pausa
         pwm.setPWM(GPIO00, freq, 0);     // cambiar frecuencia y duty
-        delayMicroseconds(1671);
+        delayMicroseconds(pausa);
         //Serial.print("0");
 
         // Envio del comando completo
@@ -214,12 +219,12 @@ void CMD_IR_to_Ctrol(String Cadena)
                 //Envio de 1(uno) que es la primera parte del pulso que forma el 1(uno) del comando IR
                 //----------------------------------------------------------------------------------------------------
                 pwm.setPWM(GPIO00, freq, duty);     // cambiar frecuencia y duty
-                delayMicroseconds(396);
+                delayMicroseconds(unoprimeraparte);
                 //----------------------------------------------------------------------------------------------------
                 //Envio de 0(cero) que es la segunda parte del pulso que forma el 1(uno) del comando IR
                 //----------------------------------------------------------------------------------------------------
                 pwm.setPWM(GPIO00, freq, 0);     // cambiar frecuencia y duty
-                delayMicroseconds(1278);
+                delayMicroseconds(unosegundaparte);
 
                 //Serial.print("1");
             }
@@ -229,12 +234,12 @@ void CMD_IR_to_Ctrol(String Cadena)
                 //Envio de 1(uno) que es la primera parte del pulso que forma el 0(cero) del comando IR
                 //----------------------------------------------------------------------------------------------------
                 pwm.setPWM(GPIO00, freq, duty);     // cambiar frecuencia y duty
-                delayMicroseconds(396); //396
+                delayMicroseconds(ceroprimeraparte); //396
                 //----------------------------------------------------------------------------------------------------
                 //Envio de 0(cero) que es la segunda parte del pulso que forma el 0(cero) del comando IR
                 //----------------------------------------------------------------------------------------------------
                 pwm.setPWM(GPIO00, freq, 0);     // cambiar frecuencia y duty
-                delayMicroseconds(435);
+                delayMicroseconds(cerosegundaparte);
 
                 //Serial.print("0");
             }
@@ -262,7 +267,7 @@ void EjecutarComando(long Comando, String Array_Cadenas[32])
             Serial.println(Array_Cadenas[i]);
 
             // Ejecutar comando IR con la cadena correspondiente
-            CMD_IR_to_Ctrol(Array_Cadenas[i]);
+            CMD_IR_to_Ctrol(Array_Cadenas[i],WH_Inicio,WH_Pausa, WH_UnoPrimeraParte, WH_UnoSegundaParte, WH_CeroPrimeraParte, WH_CeroSegundaParte);
         }
         else
         {
